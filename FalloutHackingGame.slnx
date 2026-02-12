@@ -1,1 +1,5 @@
-<Solution />
+<Solution>
+  <Project Path="HackingGameLib/HackingGameLib.csproj" />
+  <Project Path="HackingGameUI/HackingGameUI.csproj" />
+  <Project Path="UtilitiesLib/UtilitiesLib.csproj" />
+</Solution>

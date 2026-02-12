@@ -8,4 +8,9 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\HackingGameLib\HackingGameLib.csproj" />
+    <ProjectReference Include="..\UtilitiesLib\UtilitiesLib.csproj" />
+  </ItemGroup>
+
 </Project>
