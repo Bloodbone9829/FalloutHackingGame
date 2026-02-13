@@ -37,14 +37,18 @@
         </DockPanel>
 
         <Border Grid.Row="1" BorderBrush="#004400" BorderThickness="2" Padding="10">
-            <TextBlock x:Name="TxtBoard"
-                       Text="Initializing..."
-                       Foreground="#00FF00"
-                       FontFamily="Consolas"
-                       FontSize="20"
-                       TextWrapping="Wrap"
-                       Cursor="Hand"
-                       MouseLeftButtonDown="TxtBoard_MouseLeftButtonDown"/>
+            <TextBox x:Name="TxtBoard"
+             Text="Initializing..."
+             Foreground="#00FF00"
+             Background="Transparent"
+             BorderThickness="0"
+             FontFamily="Consolas"
+             FontSize="20"
+             TextWrapping="Wrap"
+             IsReadOnly="True"
+             IsHitTestVisible="True"
+             Cursor="Hand"
+             PreviewMouseLeftButtonDown="TxtBoard_MouseLeftButtonDown"/>
         </Border>
 
         <TextBlock x:Name="TxtStatus" 
