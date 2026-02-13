@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-
 namespace HackingGameLib
 {
     public class HackingTerminal
@@ -32,7 +31,7 @@ namespace HackingGameLib
             // BoardState = ... (result of generation);
 
             // 1. Reset the dictionary for the new game
-            _wordLocations.Clear();
+            _wordLocationsDict.Clear();
 
             // ... (Your logic to get words from WordBank) ...
             List<string> wordsToPlace = WordBank.GetWords(5 + difficulty, 15);
@@ -62,7 +61,7 @@ namespace HackingGameLib
                             boardChars[position + i] = word[i];
 
                         // *** THIS IS THE KEY PART ***
-                        _wordLocations.Add(position, word);
+                        _wordLocationsDict.Add(position, word);
 
                         placed = true;
                     }
@@ -71,6 +70,18 @@ namespace HackingGameLib
 
             // 4. Finalize Board
             BoardState = new string(boardChars);
+        }
+        private char[] GenerateRandomGarbage(int length)
+        {
+            const string garbageChars = "!@#$%^&*()_+-=[]{}|;:,.<>/?`~";
+            Random rnd = new Random();
+            char[] result = new char[length];
+
+            for (int i = 0; i < length; i++)
+            {
+                result[i] = garbageChars[rnd.Next(garbageChars.Length)];
+            }
+            return result;
         }
 
         public int CheckLikeness(string guess)
