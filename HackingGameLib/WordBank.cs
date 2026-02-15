@@ -7,7 +7,7 @@ namespace HackingGameLib
     public static class WordBank
     {
         private static List<string> _cachedWords;
-        private const string FileName = "WordBank.txt";
+        private const string FileName = "resources/WordBank.txt";
         private static char[] _delimiters = { ' ', '\n', '\r', '\t', '.', ',', '!', '?', '"', ':', ';', '(', ')', '[', ']' };
         /// <summary>
         /// Reads words from the text file and returns a random list of the specified length.

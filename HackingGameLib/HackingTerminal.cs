@@ -12,76 +12,133 @@ namespace HackingGameLib
 
         public event Action<string> OnGameMessage; 
         public event Action<int> OnAttemptsUpdate; // Updates the UI. Pass the new attempts count.
-        public string OpeningBrackets = "({[<";
-
+        private const string OpeningBrackets = "({[<";
+        private const string GarbageChars = "!@#$%^&*()_+-=[]{}|;:,.<>/?`~";
+        private Random _random;
+        private const int ColumnCount = 12; // number of characters per line on the board (for formatting purposes)
+        private const int MinRowsCount = 17; // Standard Fallout screen height
         private Dictionary<int, string> _wordLocationsDict = new Dictionary<int, string>();
-        public void StartGame(int difficulty)
+
+        private int _currentActiveRows; // Tracks how many rows are currently active based on the number of words and board size. This can be used for UI scaling
+
+        public HackingTerminal()
         {
-            // 1. Get words from your WordBank (assuming you implemented it)
-            // var words = WordBank.GetWords(length: 5 + difficulty, count: 15);
-
-            // 2. Pick Password
-            // Password = words[new Random().Next(words.Count)];
-
-            // 3. GENERATE BOARD (Simplified Token approach)
-            // Create a 408-char string of junk symbols.
-            // Insert the words at random random intervals.
-            // Insert specific matching brackets (e.g. '[' and ']') exactly 6 chars apart.
-
-            // BoardState = ... (result of generation);
-
-            // 1. Reset the dictionary for the new game
+            _random = new Random();
+        }
+        public void StartGame(int difficulty = 0)
+        {
             _wordLocationsDict.Clear();
 
-            // ... (Your logic to get words from WordBank) ...
-            List<string> wordsToPlace = WordBank.GetWords(5 + difficulty, 15);
-            CorrectPassword = wordsToPlace[new Random().Next(wordsToPlace.Count)];
+            // 1. Configuration
+            var wordsToPlace = GetWordsForDifficulty(difficulty);
+            CorrectPassword = SelectRandomPassword(wordsToPlace);
 
-            // 2. Setup the empty board (e.g. 408 random characters)
-            char[] boardChars = GenerateRandomGarbage(408);
+            // 2. Initialization
+            _currentActiveRows = CalculateRequiredRows(wordsToPlace.Count, wordsToPlace[0].Length);
+            int totalBoardSize = _currentActiveRows * ColumnCount;
 
-            // 3. Place the words and record their locations
-            Random rnd = new Random();
+            char[] boardBuffer = GenerateRandomGarbage(totalBoardSize);
+            // 3. Core Logic
+            PlaceWordsOnBoard(boardBuffer, wordsToPlace);
 
-            foreach (string word in wordsToPlace)
+            // 4. Finalization
+            BoardState = new string(boardBuffer);
+        }
+
+        // Checks if the specified range on the board is free of letters (i.e. safe for placing a new word)
+        private bool IsSpaceAvailable(char[] board, int position, int length)
+        {
+            // Your LINQ logic lives here now. 
+            // It is isolated, easy to read, and easy to change later.
+            return !board
+                    .Skip(position)
+                    .Take(length)
+                    .Any(char.IsLetter); // Note: You can use Method Group syntax here!
+        }
+
+        private void PlaceWordsOnBoard(char[] board, List<string> words)
+        {
+            foreach (string word in words)
             {
-                int position;
-                bool placed = false;
-
-                // Try to find a spot that doesn't overlap other words
-                while (!placed)
+                if (!TryPlaceSingleWord(board, word))
                 {
-                    position = rnd.Next(0, boardChars.Length - word.Length);
-
-                    // (You would add logic here to ensure it doesn't overlap existing words)
-                    // If safe:
-                    {
-                        // Write word to board array
-                        for (int i = 0; i < word.Length; i++)
-                            boardChars[position + i] = word[i];
-
-                        // *** THIS IS THE KEY PART ***
-                        _wordLocationsDict.Add(position, word);
-
-                        placed = true;
-                    }
+                    // Socratic Question: What should happen if a word simply 
+                    // CANNOT fit after 100 tries? Should the game crash, 
+                    // or should we just skip that word?
                 }
             }
-
-            // 4. Finalize Board
-            BoardState = new string(boardChars);
         }
+
+        // Tries to place a single word on the board. Returns true if successful, false if it fails after max attempts.
+        private bool TryPlaceSingleWord(char[] board, string word)
+        {
+            int maxAttempts = 100;
+
+            for (int attempts = 0; attempts < maxAttempts; attempts++)
+            {
+                int position = _random.Next(0, board.Length - word.Length);
+
+                if (IsSpaceAvailable(board, position, word.Length))
+                {
+                    WriteWordToBuffer(board, word, position);
+                    _wordLocationsDict.Add(position, word); // Side effect: Updating state
+                    return true; // Success!
+                }
+            }
+            return false; // Failed to place
+        }
+
+        // Writes the word into the board array at the specified position
+        private void WriteWordToBuffer(char[] board, string word, int startPosition)
+        {
+            for (int i = 0; i < word.Length; i++)
+            {
+                board[startPosition + i] = word[i];
+            }
+        }
+
+        // generates random garbage characters to fill the board, ensuring we have a mix of symbols and brackets for the player to interact with.
         private char[] GenerateRandomGarbage(int length)
         {
-            const string garbageChars = "!@#$%^&*()_+-=[]{}|;:,.<>/?`~";
-            Random rnd = new Random();
             char[] result = new char[length];
 
             for (int i = 0; i < length; i++)
             {
-                result[i] = garbageChars[rnd.Next(garbageChars.Length)];
+                result[i] = GarbageChars[_random.Next(GarbageChars.Length)];
             }
             return result;
+        }
+
+     
+        private List<string> GetWordsForDifficulty(int difficulty)
+        {
+            // The logic: 5 chars is base, difficulty adds to length. 
+            // We always want 15 words.
+            int wordLength = 5 + difficulty;
+            int wordCount = 15;
+
+            return WordBank.GetWords(wordLength, wordCount);
+        }
+
+        private string SelectRandomPassword(List<string> words)
+        {
+            // Safety check: ensures the list isn't empty
+            if (words == null || words.Count == 0)
+                throw new InvalidOperationException("Word list cannot be empty.");
+
+            int index = _random.Next(words.Count);
+            return words[index];
+        }
+
+        // This method calculates how many rows we need to generate based on the number of words and their length, ensuring we have enough garbage to fill the board and create a good experience.
+        private int CalculateRequiredRows(int wordCount, int wordLength)
+        {
+            int rawContentSize = wordCount * wordLength;
+            int minSafeSize = rawContentSize * 2;
+
+            int rowsRequired = (int)Math.Ceiling((double)minSafeSize / ColumnCount); 
+
+            return Math.Max(MinRowsCount, rowsRequired);
         }
 
         public int CheckLikeness(string guess)
@@ -152,6 +209,17 @@ namespace HackingGameLib
             };
         }
 
+        public TerminalSettingsDTO GetTerminalSettings()
+        {
+            // Safety: If game hasn't started, return 0 or calculate it manually
+            int actualLength = BoardState != null ? BoardState.Length : 0;
+            return new TerminalSettingsDTO
+            {
+                Columns = ColumnCount,
+                Rows = _currentActiveRows,
+                TotalLength = actualLength
+            };
+        }
         private SelectionResultDTO CheckIfWord(int index)
         {
             // Loop through all known word positions
@@ -179,7 +247,7 @@ namespace HackingGameLib
             return null;
         }
 
-        private bool IsStartBracket(char c) => "({[<".Contains(c);
+        private bool IsStartBracket(char c) => OpeningBrackets.Contains(c);
 
         private char GetMatchingCloser(char c)
         {

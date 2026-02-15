@@ -37,18 +37,37 @@
         </DockPanel>
 
         <Border Grid.Row="1" BorderBrush="#004400" BorderThickness="2" Padding="10">
-            <TextBox x:Name="TxtBoard"
-             Text="Initializing..."
-             Foreground="#00FF00"
-             Background="Transparent"
-             BorderThickness="0"
-             FontFamily="Consolas"
-             FontSize="20"
-             TextWrapping="Wrap"
-             IsReadOnly="True"
-             IsHitTestVisible="True"
-             Cursor="Hand"
-             PreviewMouseLeftButtonDown="TxtBoard_MouseLeftButtonDown"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="15" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock x:Name="TxtHexCodes"
+                           Grid.Column="0"
+                           Foreground="#008800" 
+                           FontFamily="Consolas"
+                           FontSize="20"
+                           LineHeight="24" 
+                           TextAlignment="Right"
+                           IsHitTestVisible="False"/>
+
+                <TextBox x:Name="TxtBoard"
+                         Grid.Column="2"
+                         Text="Initializing..."
+                         Foreground="#00FF00"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         FontFamily="Consolas"
+                         FontSize="20"
+                         TextBlock.LineHeight="24"
+                         TextWrapping="Wrap"
+                         IsReadOnly="True"
+                         IsHitTestVisible="True"
+                         Cursor="Hand"
+                         PreviewMouseLeftButtonDown="TxtBoard_MouseLeftButtonDown"/>
+            </Grid>
         </Border>
 
         <TextBlock x:Name="TxtStatus" 
