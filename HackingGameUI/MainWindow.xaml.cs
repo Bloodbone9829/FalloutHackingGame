@@ -27,38 +27,102 @@ namespace HackingGameUI
 
         private void InitializeGame()
         {
-            // 2. Subscribe to events (Delegates)
-            _terminal.OnGameMessage += HandleGameMessage;
-            _terminal.OnAttemptsUpdate += HandleAttemptsUpdate;
-
-            // 3. Start the game logic
-            _terminal.StartGame();
-
+            // 1. Start Game
+            _terminal.StartGame(difficulty: 1);
             var settings = _terminal.GetTerminalSettings();
 
-            TxtBoard.Width = MeasureStringWidth(TxtBoard, settings.Columns);
+            // 2. Prepare the Visuals
+            // We assume the board is split into 2 visual columns
+            int rowsPerColumn = settings.Rows / 2;
 
-            // 4. Display the board
-            TxtBoard.Text = _terminal.BoardState;
-            TxtHexCodes.Text = GenerateHexHeaders(settings.Rows);
+            // 3. Generate Hex Headers (Left start 0xF900, Right starts 0xFA00)
+            TxtHexLeft.Text = GenerateHexHeaders(0xF900, rowsPerColumn);
+            TxtHexRight.Text = GenerateHexHeaders(0xFA00, rowsPerColumn);
+
+            // 4. Split the single Board string into Left/Right TextBoxes
+            SplitAndAssignBoard(_terminal.BoardState, settings.Columns, rowsPerColumn);
+
             UpdateStatus("Welcome to ROBCO Industries (TM) Termlink");
+        }
+
+        private string AddNewlines(string input, int lineLength)
+        {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < input.Length; i += lineLength)
+            {
+                // Careful not to go out of bounds on the last line
+                int len = Math.Min(lineLength, input.Length - i);
+                sb.AppendLine(input.Substring(i, len));
+            }
+            return sb.ToString();
+        }
+
+        private void TxtBoard_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is TextBox textBox)
+            {
+                // 1. Get Local Index (0 to ~200)
+                int uiIndex = textBox.GetCharacterIndexFromPoint(e.GetPosition(textBox), true);
+                if (uiIndex == -1) return;
+
+                // 2. Setup Logic
+                var settings = _terminal.GetTerminalSettings();
+                int rowsPerCol = settings.Rows / 2;
+
+                // Calculate the "Stride" (Chars + Newline)
+                int newlineLen = 2; // Usually 2 for \r\n
+                int visualStride = settings.Columns + newlineLen;
+
+                // 3. Convert Visual Coordinates to Local Linear Index
+                int row = uiIndex / visualStride;
+                int col = uiIndex % visualStride;
+                if (col >= settings.Columns) return; // Ignore clicks on the invisible newline
+
+                int localBllIndex = (row * settings.Columns) + col;
+
+                // 4. APPLY OFFSET (The Critical Step)
+                // If we clicked the RIGHT box, we need to add the length of the entire Left column
+                int offset = 0;
+                if (textBox == TxtBoardRight)
+                {
+                    // The offset is: RowsInLeftCol * CharsPerCol
+                    offset = rowsPerCol * settings.Columns;
+                }
+
+                // 5. Final Index
+                int finalIndex = localBllIndex + offset;
+                ProcessSelection(finalIndex);
+            }
         }
 
         private void TxtBoard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            // 5. Handle user clicks on the board
             if (sender is TextBox textBox)
             {
-                Point mousePos = e.GetPosition(textBox);
+                int uiIndex = textBox.GetCharacterIndexFromPoint(e.GetPosition(textBox), true);
+                if (uiIndex == -1) return;
 
-                //  returns the index of the clicked character.
-                int charIndex = textBox.GetCharacterIndexFromPoint(mousePos, true);
+                // --- THE TRANSLATION LOGIC ---
+                var settings = _terminal.GetTerminalSettings();
 
-                if (charIndex != -1)
-                {
-                    // Hand the index to the Logic Layer via our DTO
-                    ProcessSelection(charIndex);
-                }
+                // 1. How long is one visual line? 
+                //    It is Columns + NewLineChars. 
+                //    In WPF TextBox, a newline is usually 2 chars (\r\n).
+                int newlineLength = 2;
+                int visualLineLength = settings.Columns + newlineLength;
+
+                // 2. Calculate Grid Coordinates
+                int row = uiIndex / visualLineLength;
+                int col = uiIndex % visualLineLength;
+
+                // 3. Safety Check: Did they click the newline area?
+                if (col >= settings.Columns) return; // Ignore clicks on the invisible end-of-line
+
+                // 4. Convert to Linear BLL Index
+                int bllIndex = (row * settings.Columns) + col;
+
+                // 5. Send correct index to Logic
+                ProcessSelection(bllIndex);
             }
         }
 
@@ -80,17 +144,34 @@ namespace HackingGameUI
             return formattedText.Width + 10;
         }
 
-        private string GenerateHexHeaders(int rowCount)
+        private void SplitAndAssignBoard(string fullBoard, int lineLength, int rowsPerCol)
+        {
+            // A. Split the raw string into lines (chunks of 'lineLength')
+            var lines = new List<string>();
+            for (int i = 0; i < fullBoard.Length; i += lineLength)
+            {
+                int len = Math.Min(lineLength, fullBoard.Length - i);
+                lines.Add(fullBoard.Substring(i, len));
+            }
+
+            // B. Distribute to TextBoxes
+            // Take first 16 lines for Left
+            var leftLines = lines.Take(rowsPerCol);
+            TxtBoardLeft.Text = string.Join(Environment.NewLine, leftLines);
+
+            // Take remaining lines for Right
+            var rightLines = lines.Skip(rowsPerCol);
+            TxtBoardRight.Text = string.Join(Environment.NewLine, rightLines);
+        }
+
+        // Updated Hex Generator to take a specific start address
+        private string GenerateHexHeaders(int startAddress, int count)
         {
             StringBuilder sb = new StringBuilder();
-            // Fallout terminals usually start at memory address 0xF900 or similar
-            int startAddress = 0xF900;
-
-            for (int i = 0; i < rowCount; i++)
+            for (int i = 0; i < count; i++)
             {
-                // Format as Hex "0xF900"
                 sb.AppendLine($"0x{startAddress:X}");
-                startAddress += 16; // Increment address (visual only)
+                startAddress += 16;
             }
             return sb.ToString();
         }

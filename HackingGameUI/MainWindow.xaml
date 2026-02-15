@@ -40,36 +40,36 @@
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="15" />
+                    <ColumnDefinition Width="10" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="30" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="10" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <TextBlock x:Name="TxtHexCodes"
-                           Grid.Column="0"
-                           Foreground="#008800" 
-                           FontFamily="Consolas"
-                           FontSize="20"
-                           LineHeight="24" 
-                           TextAlignment="Right"
-                           IsHitTestVisible="False"/>
+                <TextBlock x:Name="TxtHexLeft" Grid.Column="0"
+                   Foreground="#008800" FontFamily="Consolas" FontSize="20"
+                   LineHeight="24" TextAlignment="Right" IsHitTestVisible="False"/>
 
-                <TextBox x:Name="TxtBoard"
-                         Grid.Column="2"
-                         Text="Initializing..."
-                         Foreground="#00FF00"
-                         Background="Transparent"
-                         BorderThickness="0"
-                         FontFamily="Consolas"
-                         FontSize="20"
-                         TextBlock.LineHeight="24"
-                         TextWrapping="Wrap"
-                         IsReadOnly="True"
-                         IsHitTestVisible="True"
-                         Cursor="Hand"
-                         PreviewMouseLeftButtonDown="TxtBoard_MouseLeftButtonDown"/>
+                <TextBox x:Name="TxtBoardLeft" Grid.Column="2"
+                 Foreground="#00FF00" Background="Transparent" BorderThickness="0"
+                 FontFamily="Consolas" FontSize="20" TextBlock.LineHeight="24"
+                 TextWrapping="NoWrap" IsReadOnly="True" Cursor="Hand"
+                 PreviewMouseLeftButtonDown="TxtBoard_Click"/>
+
+                <TextBlock x:Name="TxtHexRight" Grid.Column="4"
+                   Foreground="#008800" FontFamily="Consolas" FontSize="20"
+                   LineHeight="24" TextAlignment="Right" IsHitTestVisible="False"/>
+
+                <TextBox x:Name="TxtBoardRight" Grid.Column="6"
+                 Foreground="#00FF00" Background="Transparent" BorderThickness="0"
+                 FontFamily="Consolas" FontSize="20" TextBlock.LineHeight="24"
+                 TextWrapping="NoWrap" IsReadOnly="True" Cursor="Hand"
+                 PreviewMouseLeftButtonDown="TxtBoard_Click"/>
             </Grid>
         </Border>
-
+        
         <TextBlock x:Name="TxtStatus" 
                    Grid.Row="2"
                    Text="> WELCOME USER..." 

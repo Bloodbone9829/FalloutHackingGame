@@ -16,7 +16,7 @@ namespace HackingGameLib
         private const string GarbageChars = "!@#$%^&*()_+-=[]{}|;:,.<>/?`~";
         private Random _random;
         private const int ColumnCount = 12; // number of characters per line on the board (for formatting purposes)
-        private const int MinRowsCount = 17; // Standard Fallout screen height
+        private const int MinRowsCount = 32; // Standard Fallout screen height
         private Dictionary<int, string> _wordLocationsDict = new Dictionary<int, string>();
 
         private int _currentActiveRows; // Tracks how many rows are currently active based on the number of words and board size. This can be used for UI scaling
