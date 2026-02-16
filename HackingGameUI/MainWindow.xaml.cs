@@ -27,6 +27,8 @@ namespace HackingGameUI
 
         private void InitializeGame()
         {
+            _terminal.OnGameMessage += HandleGameMessage;
+            _terminal.OnAttemptsUpdate += HandleAttemptsUpdate;
             // 1. Start Game
             _terminal.StartGame(difficulty: 1);
             var settings = _terminal.GetTerminalSettings();
@@ -45,18 +47,6 @@ namespace HackingGameUI
             UpdateStatus("Welcome to ROBCO Industries (TM) Termlink");
         }
 
-        private string AddNewlines(string input, int lineLength)
-        {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < input.Length; i += lineLength)
-            {
-                // Careful not to go out of bounds on the last line
-                int len = Math.Min(lineLength, input.Length - i);
-                sb.AppendLine(input.Substring(i, len));
-            }
-            return sb.ToString();
-        }
-
         private void TxtBoard_Click(object sender, MouseButtonEventArgs e)
         {
             if (sender is TextBox textBox)
@@ -68,13 +58,11 @@ namespace HackingGameUI
                 // Safety Check: Ensure index is valid
                 if (uiIndex < 0 || uiIndex >= textBox.Text.Length) return;
 
-                // 2. Robust Validity Check
                 // If we clicked a newline character or whitespace, ignore it.
                 char clickedChar = textBox.Text[uiIndex];
                 if (char.IsControl(clickedChar)) return;
 
-                // 3. Map to BLL Index (The Robust Way)
-                // Instead of stride math, we count how many "real" characters exist before this point.
+
                 // This ignores \r, \n, or any other formatting fluff completely.
                 string textPrecedingClick = textBox.Text.Substring(0, uiIndex);
 
@@ -95,74 +83,15 @@ namespace HackingGameUI
                 ProcessSelection(localBllIndex + offset);
             }
         }
-
-        private void TxtBoard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (sender is TextBox textBox)
-            {
-                int uiIndex = textBox.GetCharacterIndexFromPoint(e.GetPosition(textBox), true);
-                if (uiIndex == -1) return;
-
-                // --- THE TRANSLATION LOGIC ---
-                var settings = _terminal.GetTerminalSettings();
-
-                // 1. How long is one visual line? 
-                //    It is Columns + NewLineChars. 
-                //    In WPF TextBox, a newline is usually 2 chars (\r\n).
-                int newlineLength = 2;
-                int visualLineLength = settings.Columns + newlineLength;
-
-                // 2. Calculate Grid Coordinates
-                int row = uiIndex / visualLineLength;
-                int col = uiIndex % visualLineLength;
-
-                // 3. Safety Check: Did they click the newline area?
-                if (col >= settings.Columns) return; // Ignore clicks on the invisible end-of-line
-
-                // 4. Convert to Linear BLL Index
-                int bllIndex = (row * settings.Columns) + col;
-
-                // 5. Send correct index to Logic
-                ProcessSelection(bllIndex);
-            }
-        }
-
-        private double MeasureStringWidth(TextBox target, int charCount)
-        {
-            // Create a string of 'X's to measure
-            string testString = new string('X', charCount);
-
-            var formattedText = new FormattedText(
-                testString,
-                System.Globalization.CultureInfo.InvariantCulture,
-                FlowDirection.LeftToRight,
-                new Typeface(target.FontFamily, target.FontStyle, target.FontWeight, target.FontStretch),
-                target.FontSize,
-                Brushes.Black, // Color doesn't matter for measurement
-                VisualTreeHelper.GetDpi(this).PixelsPerDip);
-
-            // Add a tiny bit of padding (5-10px) to prevent accidental wrapping
-            return formattedText.Width + 10;
-        }
-
+       
         private void SplitAndAssignBoard(string fullBoard, int lineLength, int rowsPerCol)
         {
-            // A. Split the raw string into lines (chunks of 'lineLength')
-            var lines = new List<string>();
-            for (int i = 0; i < fullBoard.Length; i += lineLength)
-            {
-                int len = Math.Min(lineLength, fullBoard.Length - i);
-                lines.Add(fullBoard.Substring(i, len));
-            }
+            // A. Split the full board string into lines based on the line length
+            List<string> lines = fullBoard.Chunk(lineLength).Select(c => new string(c)).ToList();
 
-            // B. Distribute to TextBoxes
-            // Take first 16 lines for Left
-            var leftLines = lines.Take(rowsPerCol);
-            TxtBoardLeft.Text = string.Join(Environment.NewLine, leftLines);
-
-            // Take remaining lines for Right
-            var rightLines = lines.Skip(rowsPerCol);
-            TxtBoardRight.Text = string.Join(Environment.NewLine, rightLines);
+            // B. Assign the first half of the lines to the left TextBox and the second half to the right TextBox
+            TxtBoardLeft.Text = string.Join(Environment.NewLine, lines.Take(rowsPerCol));
+            TxtBoardRight.Text = string.Join(Environment.NewLine, lines.Skip(rowsPerCol));
         }
 
         // Updated Hex Generator to take a specific start address

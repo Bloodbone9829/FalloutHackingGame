@@ -57,6 +57,9 @@
                          Foreground="#00FF00" Background="Transparent" BorderThickness="0"
                          FontFamily="Consolas" FontSize="20" TextBlock.LineHeight="24"
                          TextWrapping="NoWrap" IsReadOnly="True" Cursor="Hand"
+                         Focusable="False" 
+                         SelectionOpacity="0"
+                         IsReadOnlyCaretVisible="False"
                          PreviewMouseLeftButtonDown="TxtBoard_Click"/>
 
                     <TextBlock x:Name="TxtHexRight" Grid.Column="4"
@@ -67,6 +70,9 @@
                          Foreground="#00FF00" Background="Transparent" BorderThickness="0"
                          FontFamily="Consolas" FontSize="20" TextBlock.LineHeight="24"
                          TextWrapping="NoWrap" IsReadOnly="True" Cursor="Hand"
+                         Focusable="False" 
+                         SelectionOpacity="0"
+                         IsReadOnlyCaretVisible="False"
                          PreviewMouseLeftButtonDown="TxtBoard_Click"/>
                 </Grid>
             </ScrollViewer>
