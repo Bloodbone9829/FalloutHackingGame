@@ -83,7 +83,7 @@ namespace HackingGameUI
                 ProcessSelection(localBllIndex + offset);
             }
         }
-       
+
         private void SplitAndAssignBoard(string fullBoard, int lineLength, int rowsPerCol)
         {
             // A. Split the full board string into lines based on the line length
@@ -123,6 +123,102 @@ namespace HackingGameUI
                 }
             }
         }
+
+        private void TxtBoard_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (sender is TextBox textBox)
+            {
+                // 1. Get Visual Index from the point
+                int uiIndex = textBox.GetCharacterIndexFromPoint(e.GetPosition(textBox), true);
+                if (uiIndex < 0 || uiIndex >= textBox.Text.Length) return;
+
+                // 2. Guard: If hovering over a newline, clear highlight and stop
+                if (char.IsControl(textBox.Text[uiIndex]))
+                {
+                    textBox.Select(0, 0);
+                    return;
+                }
+
+                // 3. Map to BLL Index (Counting real content characters)
+                int localBllIndex = textBox.Text.Substring(0, uiIndex).Count(c => !char.IsControl(c));
+
+                int offset = 0;
+                if (textBox == TxtBoardRight)
+                {
+                    var settings = _terminal.GetTerminalSettings();
+                    offset = (settings.Rows / 2) * settings.Columns;
+                }
+
+                int finalIndex = localBllIndex + offset;
+
+                // 4. Request the Selection DTO from BLL
+                SelectionResultDTO result = _terminal.GetSelection(finalIndex);
+
+
+                // 1. Find where the word starts visually (you already have this)
+                int localTargetStart = result.StartIndex - offset;
+                int visualStart = FindVisualIndex(textBox.Text, localTargetStart);
+
+                // 2. NEW: Calculate how long the selection must be to cover the word + newlines
+                int visualLength = CalculateVisualLength(textBox.Text, visualStart, result.Length);
+
+                // 3. Apply the corrected highlight
+                textBox.Focus();
+                textBox.Select(visualStart, visualLength);
+
+            }
+        }
+
+        private void TxtBoard_MouseLeave(object sender, MouseEventArgs e)
+        {
+            if (sender is TextBox textBox)
+            {
+                // Immediately clear the highlight
+                textBox.Select(0, 0);
+
+                // Optional: Reset cursor to default arrow if you were changing it
+                textBox.Cursor = Cursors.Arrow;
+            }
+        }
+
+        private int FindVisualIndex(string text, int targetContentIndex)
+        {
+            int contentCounter = 0;
+            for (int i = 0; i < text.Length; i++)
+            {
+                // If we found our nth non-control character, return that visual index
+                if (contentCounter == targetContentIndex && !char.IsControl(text[i]))
+                    return i;
+
+                if (!char.IsControl(text[i]))
+                    contentCounter++;
+            }
+            return 0;
+        }
+
+        private int CalculateVisualLength(string text, int visualStart, int contentLength)
+        {
+            int currentLength = 0;
+            int contentFound = 0;
+            int currentIndex = visualStart;
+
+            // Keep walking until we find enough content or hit the end of the text
+            while (contentFound < contentLength && currentIndex < text.Length)
+            {
+                // Always count the step (whether it's a letter or a newline)
+                currentLength++;
+
+                // Only count towards "content" if it's not a control char
+                if (!char.IsControl(text[currentIndex]))
+                {
+                    contentFound++;
+                }
+
+                currentIndex++;
+            }
+            return currentLength;
+        }
+
         // Helper for updating the status log
         private void UpdateStatus(string msg)
         {

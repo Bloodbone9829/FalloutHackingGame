@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:HackingGameUI"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
-    
+
     <Grid Background="Black" Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -54,26 +54,34 @@
                        LineHeight="24" TextAlignment="Right" IsHitTestVisible="False"/>
 
                     <TextBox x:Name="TxtBoardLeft" Grid.Column="2"
-                         Foreground="#00FF00" Background="Transparent" BorderThickness="0"
-                         FontFamily="Consolas" FontSize="20" TextBlock.LineHeight="24"
-                         TextWrapping="NoWrap" IsReadOnly="True" Cursor="Hand"
-                         Focusable="False" 
-                         SelectionOpacity="0"
-                         IsReadOnlyCaretVisible="False"
-                         PreviewMouseLeftButtonDown="TxtBoard_Click"/>
+                            Foreground="#00FF00" Background="Transparent" BorderThickness="0"
+                            FontFamily="Consolas" FontSize="20" TextBlock.LineHeight="24"
+                            TextWrapping="NoWrap" IsReadOnly="True" Cursor="Hand"
+                            Focusable="True" 
+                            SelectionOpacity="1.0" 
+                            SelectionBrush="#00FF00"
+                            SelectionTextBrush="Black"
+                            IsReadOnlyCaretVisible="False"
+                            PreviewMouseLeftButtonDown="TxtBoard_Click"
+                            MouseMove="TxtBoard_MouseMove"
+                            MouseLeave="TxtBoard_MouseLeave"/>
 
                     <TextBlock x:Name="TxtHexRight" Grid.Column="4"
                        Foreground="#008800" FontFamily="Consolas" FontSize="20"
                        LineHeight="24" TextAlignment="Right" IsHitTestVisible="False"/>
 
-                    <TextBox x:Name="TxtBoardRight" Grid.Column="6"
-                         Foreground="#00FF00" Background="Transparent" BorderThickness="0"
-                         FontFamily="Consolas" FontSize="20" TextBlock.LineHeight="24"
-                         TextWrapping="NoWrap" IsReadOnly="True" Cursor="Hand"
-                         Focusable="False" 
-                         SelectionOpacity="0"
-                         IsReadOnlyCaretVisible="False"
-                         PreviewMouseLeftButtonDown="TxtBoard_Click"/>
+                    <TextBox x:Name="TxtBoardRight" Grid.Column="6"                             
+                            Foreground="#00FF00" Background="Transparent" BorderThickness="0"
+                            FontFamily="Consolas" FontSize="20" TextBlock.LineHeight="24"
+                            TextWrapping="NoWrap" IsReadOnly="True" Cursor="Hand"
+                            Focusable="True" 
+                            SelectionOpacity="1.0" 
+                            SelectionBrush="#00FF00"
+                            SelectionTextBrush="Black"
+                            IsReadOnlyCaretVisible="False"
+                            PreviewMouseLeftButtonDown="TxtBoard_Click"
+                            MouseMove="TxtBoard_MouseMove"
+                            MouseLeave="TxtBoard_MouseLeave"/>   
                 </Grid>
             </ScrollViewer>
         </Border>
