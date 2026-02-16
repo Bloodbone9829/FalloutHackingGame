@@ -61,37 +61,38 @@ namespace HackingGameUI
         {
             if (sender is TextBox textBox)
             {
-                // 1. Get Local Index (0 to ~200)
+                // 1. Get Visual Index
+                // This WPF method handles font sizes and variable widths for us.
                 int uiIndex = textBox.GetCharacterIndexFromPoint(e.GetPosition(textBox), true);
-                if (uiIndex == -1) return;
 
-                // 2. Setup Logic
-                var settings = _terminal.GetTerminalSettings();
-                int rowsPerCol = settings.Rows / 2;
+                // Safety Check: Ensure index is valid
+                if (uiIndex < 0 || uiIndex >= textBox.Text.Length) return;
 
-                // Calculate the "Stride" (Chars + Newline)
-                int newlineLen = 2; // Usually 2 for \r\n
-                int visualStride = settings.Columns + newlineLen;
+                // 2. Robust Validity Check
+                // If we clicked a newline character or whitespace, ignore it.
+                char clickedChar = textBox.Text[uiIndex];
+                if (char.IsControl(clickedChar)) return;
 
-                // 3. Convert Visual Coordinates to Local Linear Index
-                int row = uiIndex / visualStride;
-                int col = uiIndex % visualStride;
-                if (col >= settings.Columns) return; // Ignore clicks on the invisible newline
+                // 3. Map to BLL Index (The Robust Way)
+                // Instead of stride math, we count how many "real" characters exist before this point.
+                // This ignores \r, \n, or any other formatting fluff completely.
+                string textPrecedingClick = textBox.Text.Substring(0, uiIndex);
 
-                int localBllIndex = (row * settings.Columns) + col;
+                // Count only non-control characters (letters, numbers, symbols)
+                int localBllIndex = textPrecedingClick.Count(c => !char.IsControl(c));
 
-                // 4. APPLY OFFSET (The Critical Step)
-                // If we clicked the RIGHT box, we need to add the length of the entire Left column
+                // 4. Apply Column Offset
+                // Logic: If we are on the right board, add the total size of the left board.
                 int offset = 0;
                 if (textBox == TxtBoardRight)
                 {
-                    // The offset is: RowsInLeftCol * CharsPerCol
-                    offset = rowsPerCol * settings.Columns;
+                    var settings = _terminal.GetTerminalSettings();
+                    int rowsInLeftCol = settings.Rows / 2;
+                    offset = rowsInLeftCol * settings.Columns;
                 }
 
-                // 5. Final Index
-                int finalIndex = localBllIndex + offset;
-                ProcessSelection(finalIndex);
+                // 5. Execute
+                ProcessSelection(localBllIndex + offset);
             }
         }
 
