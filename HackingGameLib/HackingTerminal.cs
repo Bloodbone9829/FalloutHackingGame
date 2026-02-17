@@ -8,7 +8,7 @@ namespace HackingGameLib
         public string BoardState { get; private set; } // A massive string of symbols, letters, and brackets
         public List<string> ActiveWords { get; private set; } // Words that are currently "active" on the board (not yet guessed)
         public string CorrectPassword { get; private set; } // The correct password the player is trying to guess
-        public int RemainingAttempts { get; private set; } = 4; // Number of attempts left before lockout
+        public int RemainingAttempts { get; private set; } // Number of attempts left before lockout
 
         public event Action<string> OnGameMessage; 
         public event Action<int> OnAttemptsUpdate; // Updates the UI. Pass the new attempts count.
@@ -20,7 +20,6 @@ namespace HackingGameLib
         private Dictionary<int, string> _wordLocationsDict = new Dictionary<int, string>();
 
         private int _currentActiveRows; // Tracks how many rows are currently active based on the number of words and board size. This can be used for UI scaling
-
         public HackingTerminal()
         {
             _random = new Random();
@@ -28,6 +27,7 @@ namespace HackingGameLib
         public void StartGame(int difficulty = 0)
         {
             _wordLocationsDict.Clear();
+            RemainingAttempts = 4;
 
             // 1. Configuration
             var wordsToPlace = GetWordsForDifficulty(difficulty);
@@ -43,6 +43,9 @@ namespace HackingGameLib
 
             // 4. Finalization
             BoardState = new string(boardBuffer);
+
+            SendMessage("Welcome to ROBCO Industries (TM) Termlink");
+            SendMessage("Password Required");
         }
 
         // Checks if the specified range on the board is free of letters (i.e. safe for placing a new word)
@@ -141,10 +144,19 @@ namespace HackingGameLib
             return Math.Max(MinRowsCount, rowsRequired);
         }
 
-        public int CheckLikeness(string guess)
+        public void CheckLikeness(string guess)
         {
-            // Lambda: Count chars that match both value and index
-            return guess.Where((c, i) => i < CorrectPassword.Length && c == CorrectPassword[i]).Count();
+            // existing lambda logic
+            int likeness = guess.Where((c, i) => i < CorrectPassword.Length && c == CorrectPassword[i]).Count();
+
+            // NEW: BLL announces the result
+            SendMessage($"You guessed: {guess}");
+            SendMessage($"Likeness: {likeness}");
+            // Optional: Check for win/loss here and announce it too
+            if (likeness == CorrectPassword.Length)
+            {
+                SendMessage("LOGIN ACCEPTED.");
+            }
         }
 
         public SelectionResultDTO GetSelection(int index)
@@ -155,7 +167,9 @@ namespace HackingGameLib
 
             // 2. CHECK IF IT IS A WORD (Prioritize words over brackets)
             var wordResult = CheckIfWord(index);
-            if (wordResult != null) return wordResult;
+
+            if (wordResult != null) 
+                return wordResult;
 
             // 3. CHECK IF IT IS A BRACKET PAIR
             char startChar = BoardState[index];
@@ -245,6 +259,13 @@ namespace HackingGameLib
 
             // If no word was found at this index
             return null;
+        }
+
+        private void SendMessage(string message)
+        {
+            // You can even add standard formatting here so you don't 
+            // have to remember to add "> " in every other method.
+            OnGameMessage?.Invoke($"> {message}");
         }
 
         private bool IsStartBracket(char c) => OpeningBrackets.Contains(c);

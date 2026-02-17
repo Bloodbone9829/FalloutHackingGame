@@ -43,8 +43,6 @@ namespace HackingGameUI
 
             // 4. Split the single Board string into Left/Right TextBoxes
             SplitAndAssignBoard(_terminal.BoardState, settings.Columns, rowsPerColumn);
-
-            UpdateStatus("Welcome to ROBCO Industries (TM) Termlink");
         }
 
         private void TxtBoard_Click(object sender, MouseButtonEventArgs e)
@@ -56,17 +54,20 @@ namespace HackingGameUI
                 int uiIndex = textBox.GetCharacterIndexFromPoint(e.GetPosition(textBox), true);
 
                 // Safety Check: Ensure index is valid
-                if (uiIndex < 0 || uiIndex >= textBox.Text.Length) return;
+                if (uiIndex < 0 || uiIndex >= textBox.Text.Length)
+                    return;
 
                 // If we clicked a newline character or whitespace, ignore it.
                 char clickedChar = textBox.Text[uiIndex];
-                if (char.IsControl(clickedChar)) return;
+
+                if (char.IsControl(clickedChar))
+                    return;
 
 
-                // This ignores \r, \n, or any other formatting fluff completely.
+                // textPrecedingClick will contain all characters before the clicked position, including newlines.
                 string textPrecedingClick = textBox.Text.Substring(0, uiIndex);
 
-                // Count only non-control characters (letters, numbers, symbols)
+                // Count only non-control characters (letters, numbers, symbols) 
                 int localBllIndex = textPrecedingClick.Count(c => !char.IsControl(c));
 
                 // 4. Apply Column Offset
@@ -113,13 +114,12 @@ namespace HackingGameUI
 
             if (result.IsValidSelection)
             {
-                UpdateStatus($"Selected: {result.SelectedText}");
+
 
                 // If it's a word, trigger the likeness logic in the BLL
                 if (result.IsWord)
                 {
-                    int likeness = _terminal.CheckLikeness(result.SelectedText);
-                    UpdateStatus($"Likeness: {likeness}");
+                    _terminal.CheckLikeness(result.SelectedText);
                 }
             }
         }
@@ -223,7 +223,10 @@ namespace HackingGameUI
         private void UpdateStatus(string msg)
         {
             // Appends new messages to the bottom log
-            TxtStatus.Text = $"> {msg}\n" + TxtStatus.Text;
+            TxtStatus.Text += $"\n> {msg}";
+            // UI Logic: Scroll to the bottom so the newest message is visible
+            // We look for the ScrollViewer that contains TxtStatus
+            StatusScrollViewer.ScrollToEnd();
         }
 
         // Event Handlers for the BLL events

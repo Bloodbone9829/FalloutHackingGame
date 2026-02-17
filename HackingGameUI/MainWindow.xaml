@@ -27,8 +27,7 @@
                            Foreground="#00FF00" 
                            FontFamily="Consolas" 
                            FontSize="18"/>
-                <TextBlock x:Name="TxtAttempts" 
-                           Text="4" 
+                <TextBlock x:Name="TxtAttempts"  
                            Foreground="#00FF00" 
                            FontFamily="Consolas" 
                            FontSize="18" 
@@ -86,13 +85,18 @@
             </ScrollViewer>
         </Border>
 
-        <TextBlock x:Name="TxtStatus" 
-                   Grid.Row="2"
-                   Text="> WELCOME USER..." 
-                   Foreground="#00FF00" 
-                   FontFamily="Consolas" 
-                   FontSize="16" 
-                   Margin="0,10,0,0"
-                   TextWrapping="Wrap"/>
+        <ScrollViewer x:Name="StatusScrollViewer"
+              Grid.Row="2" 
+              MaxHeight="150" 
+              VerticalScrollBarVisibility="Auto"
+              Margin="0,10,0,0">
+
+            <TextBlock x:Name="TxtStatus" 
+               Foreground="#00FF00" 
+               FontFamily="Consolas" 
+               FontSize="16" 
+               TextWrapping="Wrap"/>
+
+        </ScrollViewer>
     </Grid>
 </Window>
