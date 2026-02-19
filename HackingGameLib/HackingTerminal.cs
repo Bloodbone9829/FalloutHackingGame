@@ -1,41 +1,51 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using static System.Collections.Specialized.BitVector32;
 namespace HackingGameLib
 {
     public class HackingTerminal
     {
         public string BoardState { get; private set; } // A massive string of symbols, letters, and brackets
-        public List<string> ActiveWords { get; private set; } // Words that are currently "active" on the board (not yet guessed)
-        public string CorrectPassword { get; private set; } // The correct password the player is trying to guess
-        public int RemainingAttempts { get; private set; } // Number of attempts left before lockout
 
+        private string CorrectPassword; // The correct password the player is trying to guess
+        private int RemainingAttempts; // Number of attempts left before lockout
+
+        public event Action<GameStatus> OnGameEnded;
         public event Action<string> OnGameMessage; 
         public event Action<int> OnAttemptsUpdate; // Updates the UI. Pass the new attempts count.
-        private const string OpeningBrackets = "({[<";
+        public event Action<string> OnBoardUpdate;
+
         private const string GarbageChars = "!@#$%^&*()_+-=[]{}|;:,.<>/?`~";
         private Random _random;
-        private const int ColumnCount = 12; // number of characters per line on the board (for formatting purposes)
-        private const int MinRowsCount = 32; // Standard Fallout screen height
+
         private Dictionary<int, string> _wordLocationsDict = new Dictionary<int, string>();
 
         private int _currentActiveRows; // Tracks how many rows are currently active based on the number of words and board size. This can be used for UI scaling
-        public HackingTerminal()
+        private GameConfiguration _config;
+        private GameStatus _status = GameStatus.Playing;
+        public HackingTerminal(DifficultyLevel difficulty = DifficultyLevel.Easy)
         {
             _random = new Random();
         }
-        public void StartGame(int difficulty = 0)
+
+
+        public void StartGame(DifficultyLevel difficulty)
         {
+            _config = GameConfiguration.GetPreset(difficulty);
+
+            // Reset on start
             _wordLocationsDict.Clear();
-            RemainingAttempts = 4;
+            _status = GameStatus.Playing; 
+            RemainingAttempts = _config.StartingAttempts;
 
             // 1. Configuration
-            var wordsToPlace = GetWordsForDifficulty(difficulty);
+            var wordsToPlace = GetWords();
             CorrectPassword = SelectRandomPassword(wordsToPlace);
 
             // 2. Initialization
             _currentActiveRows = CalculateRequiredRows(wordsToPlace.Count, wordsToPlace[0].Length);
-            int totalBoardSize = _currentActiveRows * ColumnCount;
+            int totalBoardSize = _currentActiveRows * _config.ColumnCount;
 
             char[] boardBuffer = GenerateRandomGarbage(totalBoardSize);
             // 3. Core Logic
@@ -44,8 +54,10 @@ namespace HackingGameLib
             // 4. Finalization
             BoardState = new string(boardBuffer);
 
+            // 5. Notify the UI
             SendMessage("Welcome to ROBCO Industries (TM) Termlink");
             SendMessage("Password Required");
+            OnAttemptsUpdate?.Invoke(RemainingAttempts);
         }
 
         // Checks if the specified range on the board is free of letters (i.e. safe for placing a new word)
@@ -113,12 +125,11 @@ namespace HackingGameLib
         }
 
      
-        private List<string> GetWordsForDifficulty(int difficulty)
+        private List<string> GetWords()
         {
-            // The logic: 5 chars is base, difficulty adds to length. 
-            // We always want 15 words.
-            int wordLength = 5 + difficulty;
-            int wordCount = 15;
+            // Set the word settings to the config settings
+            int wordLength = _config.BaseWordLength;
+            int wordCount = _config.WordCount;
 
             return WordBank.GetWords(wordLength, wordCount);
         }
@@ -139,81 +150,110 @@ namespace HackingGameLib
             int rawContentSize = wordCount * wordLength;
             int minSafeSize = rawContentSize * 2;
 
-            int rowsRequired = (int)Math.Ceiling((double)minSafeSize / ColumnCount); 
+            int rowsRequired = (int)Math.Ceiling((double)minSafeSize / _config.ColumnCount); 
 
-            return Math.Max(MinRowsCount, rowsRequired);
+            return Math.Max(_config.MinRowsCount, rowsRequired);
         }
 
-        public void CheckLikeness(string guess)
+        public void CheckLikeness(SelectionResultDTO selection)
         {
-            // existing lambda logic
+            if(_status != GameStatus.Playing)
+                return;
+
+            string guess = selection.SelectedText;
             int likeness = guess.Where((c, i) => i < CorrectPassword.Length && c == CorrectPassword[i]).Count();
 
             // NEW: BLL announces the result
             SendMessage($"You guessed: {guess}");
             SendMessage($"Likeness: {likeness}");
+
+            // now replace the guessed word with a dot (.)
             // Optional: Check for win/loss here and announce it too
             if (likeness == CorrectPassword.Length)
             {
+                _status = GameStatus.Won;
                 SendMessage("LOGIN ACCEPTED.");
             }
+            else
+            {
+                ApplyDudToBoard(selection.StartIndex, selection.Length);
+                RemainingAttempts--;
+                if (RemainingAttempts <= 0)
+                {
+                    _status = GameStatus.Lost;
+                    SendMessage("ACCESS DENIED. TERMINAL LOCKED.");
+                }
+            }
+
+
+            // Notify the UI that the number changed
+            OnAttemptsUpdate?.Invoke(RemainingAttempts);
         }
 
         public SelectionResultDTO GetSelection(int index)
         {
+            // Create a variable to hold our result so we can inject the status at the end
+            SelectionResultDTO result;
+
             // 1. BOUNDARY CHECK
             if (index < 0 || index >= BoardState.Length)
-                return new SelectionResultDTO();
+            {
+                result = new SelectionResultDTO { IsValidSelection = false };
+            }
+            else
+            {
+                // 2. CHECK IF IT IS A WORD
+                var wordResult = CheckIfWord(index);
+                if (wordResult != null)
+                {
+                    result = wordResult;
+                }
+                else
+                {
+                    // 3. CHECK IF IT IS A BRACKET PAIR
+                    result = CheckForBracketPair(index);
+                }
+            }
 
-            // 2. CHECK IF IT IS A WORD (Prioritize words over brackets)
-            var wordResult = CheckIfWord(index);
+            // CRITICAL: Attach the current game status from the BLL to the DTO
+            result.Status = _status;
+            return result;
+        }
 
-            if (wordResult != null) 
-                return wordResult;
-
-            // 3. CHECK IF IT IS A BRACKET PAIR
+        // Pro-tip: Move the bracket loop to its own private helper to keep GetSelection readable
+        private SelectionResultDTO CheckForBracketPair(int index)
+        {
             char startChar = BoardState[index];
 
-            // Only proceed if we clicked an OPENING bracket
             if (IsStartBracket(startChar))
             {
                 char expectedCloser = GetMatchingCloser(startChar);
-                int maxDist = 10; // The "set amount" you requested
+                int maxDist = _config.BracketSearchDistance;
 
-                // LOOK AHEAD LOOP
                 for (int i = 1; i <= maxDist; i++)
                 {
                     int checkIndex = index + i;
-
-                    // Stop if we run off the end of the string
                     if (checkIndex >= BoardState.Length) break;
 
                     char checkChar = BoardState[checkIndex];
 
-                    // A. FOUND THE MATCH!
                     if (checkChar == expectedCloser)
                     {
                         return new SelectionResultDTO
                         {
                             StartIndex = index,
-                            Length = i + 1, // Distance + 1 for the closer itself
+                            Length = i + 1,
                             SelectedText = BoardState.Substring(index, i + 1),
                             IsValidSelection = true,
                             IsWord = false
                         };
                     }
-
-                    // B. HIT A WORD? (Optional Fallout Rule)
-                    // In the real game, a bracket pair cannot "eat" a word.
-                    // If we hit a letter, this bracket is a "dud" (broken pair).
-                    if (char.IsLetterOrDigit(checkChar))
-                    {
-                        break;
-                    }
+                    // if we hit a letter or digit, we stop searching (We don't count brackets that has a word between them)
+                    if (char.IsLetterOrDigit(checkChar)) break;
                 }
             }
 
-            // 4. DEFAULT: Just return the single character (Invalid selection)
+            // Default if no bracket pair found
             return new SelectionResultDTO
             {
                 StartIndex = index,
@@ -223,13 +263,80 @@ namespace HackingGameLib
             };
         }
 
+        public void HandleBracketBonus(SelectionResultDTO bracketInfo)
+        {
+            if (_status != GameStatus.Playing) return;
+
+            // Wipe the bracket pair from the board
+            ApplyDudToBoard(bracketInfo.StartIndex, bracketInfo.Length);
+            // The "Manager" decides what happens
+            if (_random.Next(4) == 0)
+            {
+                ResetAttempts();
+            }
+            else
+            {
+                RemoveRandomDud();
+            }
+        }
+
+        private void RemoveRandomDud()
+        {
+            // 1. Find the target
+            var availableDuds = _wordLocationsDict
+                .Where(kvp => kvp.Value != CorrectPassword && !kvp.Value.StartsWith("."))
+                .ToList();
+
+            if (availableDuds.Any())
+            {
+                var target = availableDuds[_random.Next(availableDuds.Count)];
+
+                // 2. Perform the surgical board update
+                ApplyDudToBoard(target.Key, target.Value.Length);
+
+                SendMessage("Dud Removed.");
+            }
+        }
+
+        private void ResetAttempts()
+        {
+            RemainingAttempts = _config.StartingAttempts;
+            OnAttemptsUpdate?.Invoke(RemainingAttempts);
+            SendMessage("Attempts Restored.");
+        }
+
+        private void ApplyDudToBoard(int startIndex, int length)
+        {
+            // 1. Check if we are tracking a word at this index
+            // If we are, update the dictionary.
+            if (_wordLocationsDict.ContainsKey(startIndex))
+            {
+                _wordLocationsDict[startIndex] = new string('.', length);
+            }
+            // 1. Convert to a char array to bypass string immutability
+            char[] buffer = BoardState.ToCharArray();
+
+            // 2. Perform the surgical replacement using the specific index
+            for (int i = 0; i < length; i++)
+            {
+                buffer[startIndex + i] = '.';
+            }
+
+            // 3. Rebuild the BoardState and notify the UI
+            BoardState = new string(buffer);
+
+            // This triggers the event you've already subscribed to in the UI!
+            OnBoardUpdate?.Invoke(BoardState);
+        }
+
+
         public TerminalSettingsDTO GetTerminalSettings()
         {
             // Safety: If game hasn't started, return 0 or calculate it manually
             int actualLength = BoardState != null ? BoardState.Length : 0;
             return new TerminalSettingsDTO
             {
-                Columns = ColumnCount,
+                Columns = _config.ColumnCount,
                 Rows = _currentActiveRows,
                 TotalLength = actualLength
             };
@@ -246,6 +353,12 @@ namespace HackingGameLib
                 // Check if the clicked index is inside this word
                 if (index >= wordStartIndex && index < wordEndIndex)
                 {
+                    if (word.StartsWith("."))
+                    {
+                        // If the word is a removed dud (starts with a dot), we don't want to select it
+                        return null;
+                    }
+
                     return new SelectionResultDTO
                     {
                         StartIndex = wordStartIndex,
@@ -261,25 +374,26 @@ namespace HackingGameLib
             return null;
         }
 
+        // This method is responsible for sending messages back to the UI or BLL
         private void SendMessage(string message)
         {
-            // You can even add standard formatting here so you don't 
-            // have to remember to add "> " in every other method.
+
             OnGameMessage?.Invoke($"> {message}");
         }
 
-        private bool IsStartBracket(char c) => OpeningBrackets.Contains(c);
+        private bool IsStartBracket(char c)
+        {
+
+            return _config.BracketPairs.ContainsKey(c);
+        }
 
         private char GetMatchingCloser(char c)
         {
-            switch (c)
+            if (_config.BracketPairs.TryGetValue(c, out char closer))
             {
-                case '(': return ')';
-                case '{': return '}';
-                case '[': return ']';
-                case '<': return '>';
-                default: return '\0'; // Return null char if no match
+                return closer;
             }
+            return '\0';
         }
     }
 }
