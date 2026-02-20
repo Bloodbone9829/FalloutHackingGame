@@ -76,18 +76,25 @@ namespace HackingGameUI
         {
             if (sender is TextBox textBox)
             {
-                // 1. Use the helper to translate the mouse click to a logical BLL index
-                int finalIndex = GetBllIndexFromMouse(textBox, e.GetPosition(textBox));
+                // 1. Determine the offset (0 for left box, calculated value for right)
+                // This is still PL logic because it relates to how we display the board.
+                int offset = (textBox == TxtBoardRight) ? CalculateRightBoardOffset() : 0;
 
-                // 2. If the click was valid (not on a newline or garbage whitespace)
+                // 2. Delegate the coordinate mapping to our Helper class
+                int finalIndex = TerminalUIHelper.MapMouseToIndex(textBox, e.GetPosition(textBox), offset);
+
+                // 3. If the click was valid (not on a newline/control character)
                 if (finalIndex != -1)
                 {
-                    // 3. Execute the game logic for this index
+                    // 4. Pass the logical index to the BLL
                     ProcessSelection(finalIndex);
+
+                    // Mark the event as handled to prevent further routing
                     e.Handled = true;
                 }
             }
         }
+
         private void SplitAndAssignBoard(string fullBoard, int lineLength, int rowsPerCol)
         {
             // A. Split the full board string into lines based on the line length
@@ -112,52 +119,20 @@ namespace HackingGameUI
 
         private void ProcessSelection(int index)
         {
-            // Ask the BLL for the data at this index
-            SelectionResultDTO result = _terminal.GetSelection(index);
-            if (result.Status != GameStatus.Playing)
-            {
-                return; // Handle losses / winning
-            }
-
-            if (result.IsValidSelection)
-            {
-                // If it's a word, trigger the likeness logic in the BLL
-                if (result.IsWord)
-                {
-                    _terminal.CheckLikeness(result);
-                }
-                else 
-                {
-                    // Then we have clicked a open pracket that has a matching closer
-                    _terminal.HandleBracketBonus(result);
-                }
-
-            }
+            _terminal.ProcessTurn(index);
         }
 
         private void TxtBoard_MouseMove(object sender, MouseEventArgs e)
         {
             if (sender is TextBox textBox)
             {
-                int finalIndex = GetBllIndexFromMouse(textBox, e.GetPosition(textBox));
+                int offset = (textBox == TxtBoardRight) ? CalculateRightBoardOffset() : 0;
+                int finalIndex = TerminalUIHelper.MapMouseToIndex(textBox, e.GetPosition(textBox), offset);
 
                 if (finalIndex == _lastMousedIndex) return;
-
                 _lastMousedIndex = finalIndex;
 
-                if (finalIndex != -1)
-                {
-                    // 1. Get the DTO from the BLL
-                    SelectionResultDTO result = _terminal.GetSelection(finalIndex);
-
-                    // 2. Pass it to the Unified Highlighter
-                    ApplyUnifiedHighlight(result);
-                }
-                else
-                {
-                    // Mouse is over whitespace/newline, clear highlights
-                    ApplyUnifiedHighlight(null);
-                }
+                ApplyUnifiedHighlight(finalIndex != -1 ? _terminal.GetSelection(finalIndex) : null);
             }
         }
 
@@ -196,8 +171,8 @@ namespace HackingGameUI
                 int localLogicalLength = Math.Min(selectionEnd, boxEndRange) - Math.Max(selectionStart, boxStartRange);
 
                 // Use your existing visual mapping logic
-                int visualStart = FindVisualIndex(box.Text, localLogicalStart);
-                int visualLength = CalculateVisualLength(box.Text, visualStart, localLogicalLength);
+                int visualStart = TerminalUIHelper.FindVisualIndex(box.Text, localLogicalStart);
+                int visualLength = TerminalUIHelper.CalculateVisualLength(box.Text, visualStart, localLogicalLength);
 
                 // Apply the selection
                 box.Focus();
@@ -213,44 +188,6 @@ namespace HackingGameUI
             _lastMousedIndex = -1; // Reset tracking
         }
 
-        private int FindVisualIndex(string text, int targetContentIndex)
-        {
-            int contentCounter = 0;
-            for (int i = 0; i < text.Length; i++)
-            {
-                // If we found our nth non-control character, return that visual index
-                if (contentCounter == targetContentIndex && !char.IsControl(text[i]))
-                    return i;
-
-                if (!char.IsControl(text[i]))
-                    contentCounter++;
-            }
-            return 0;
-        }
-
-        private int CalculateVisualLength(string text, int visualStart, int contentLength)
-        {
-            int currentLength = 0;
-            int contentFound = 0;
-            int currentIndex = visualStart;
-
-            // Keep walking until we find enough content or hit the end of the text
-            while (contentFound < contentLength && currentIndex < text.Length)
-            {
-                // Always count the step (whether it's a letter or a newline)
-                currentLength++;
-
-                // Only count towards "content" if it's not a control char
-                if (!char.IsControl(text[currentIndex]))
-                {
-                    contentFound++;
-                }
-
-                currentIndex++;
-            }
-            return currentLength;
-        }
-
         // Helper for updating the status log
         private void LogToTerminal(string msg)
         {
@@ -259,17 +196,6 @@ namespace HackingGameUI
             // UI Logic: Scroll to the bottom so the newest message is visible
             // We look for the ScrollViewer that contains TxtStatus
             StatusScrollViewer.ScrollToEnd();
-        }
-
-        private int GetBllIndexFromMouse(TextBox tb, Point position)
-        {
-            int uiIndex = tb.GetCharacterIndexFromPoint(position, true);
-            if (uiIndex < 0 || char.IsControl(tb.Text[uiIndex])) return -1;
-
-            int localBllIndex = tb.Text.Substring(0, uiIndex).Count(c => !char.IsControl(c));
-            int offset = (tb == TxtBoardRight) ? CalculateRightBoardOffset() : 0;
-
-            return localBllIndex + offset;
         }
 
         private int CalculateRightBoardOffset()

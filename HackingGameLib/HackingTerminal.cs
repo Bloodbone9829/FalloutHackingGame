@@ -155,7 +155,28 @@ namespace HackingGameLib
             return Math.Max(_config.MinRowsCount, rowsRequired);
         }
 
-        public void CheckLikeness(SelectionResultDTO selection)
+        public void ProcessTurn(int index)
+        {
+            // If the game is over, ignore the click entirely.
+            if (_status != GameStatus.Playing) return;
+
+            SelectionResultDTO result = GetSelection(index);
+
+            // Decides what to do based on the game rules
+            if (result.IsValidSelection)
+            {
+                if (result.IsWord)
+                {
+                    CheckLikeness(result);
+                }
+                else
+                {
+                    HandleBracketBonus(result);
+                }
+            }
+        }
+
+        private void CheckLikeness(SelectionResultDTO selection)
         {
             if(_status != GameStatus.Playing)
                 return;
@@ -167,21 +188,19 @@ namespace HackingGameLib
             SendMessage($"You guessed: {guess}");
             SendMessage($"Likeness: {likeness}");
 
-            // now replace the guessed word with a dot (.)
-            // Optional: Check for win/loss here and announce it too
+            // Check for win/loss here and announce it too
             if (likeness == CorrectPassword.Length)
             {
-                _status = GameStatus.Won;
-                SendMessage("LOGIN ACCEPTED.");
+                EndGame(GameStatus.Won);
             }
             else
             {
+                // now replace the guessed word with a dot (.)
                 ApplyDudToBoard(selection.StartIndex, selection.Length);
                 RemainingAttempts--;
                 if (RemainingAttempts <= 0)
                 {
-                    _status = GameStatus.Lost;
-                    SendMessage("ACCESS DENIED. TERMINAL LOCKED.");
+                    EndGame(GameStatus.Lost);
                 }
             }
 
@@ -372,6 +391,13 @@ namespace HackingGameLib
 
             // If no word was found at this index
             return null;
+        }
+
+        private void EndGame(GameStatus status)
+        {
+            _status = status; // Update the game status
+            OnGameEnded?.Invoke(_status); // Notify subscribers about the game end
+            SendMessage(status == GameStatus.Won ? "Login Accepted!" : "ACCESS DENIED. TERMINAL LOCKED");
         }
 
         // This method is responsible for sending messages back to the UI or BLL
