@@ -7,96 +7,123 @@
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
 
+    <Window.Resources>
+        <Style x:Key="TerminalButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#00FF00"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="FontSize" Value="20"/>
+            <Setter Property="Margin" Value="10"/>
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="BorderBrush" Value="#00FF00"/>
+            <Setter Property="Cursor" Value="Hand"/>
+
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                            BorderBrush="{TemplateBinding BorderBrush}" 
+                            BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#00FF00"/>
+                    <Setter Property="Foreground" Value="Black"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
     <Grid Background="Black" Margin="10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
-
-        <DockPanel Grid.Row="0" Margin="20,5,20,20" LastChildFill="False">
-            <TextBlock Text="ROBCO INDUSTRIES (TM) TERMLINK" 
-                       Foreground="#00FF00" 
-                       FontSize="18" 
-                       FontFamily="Consolas" 
-                       FontWeight="Bold" 
-                       DockPanel.Dock="Left"/>
-
-            <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                <TextBlock Text="ATTEMPTS LEFT: " 
-                           Foreground="#00FF00" 
-                           FontFamily="Consolas" 
-                           FontSize="18"/>
-                <TextBlock x:Name="TxtAttempts"  
-                           Foreground="#00FF00" 
-                           FontFamily="Consolas" 
-                           FontSize="18" 
-                           FontWeight="Bold"/>
+        <Grid x:Name="MenuScreen" Visibility="Visible" Panel.ZIndex="10" Background="Black">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                <TextBlock Text="ROBCO INDUSTRIES (TM) TERMLINK" Foreground="#00FF00" 
+                       FontSize="24" FontFamily="Consolas" Margin="0,0,0,40" HorizontalAlignment="Center"/>
+                <Button Content="EASY" Click="BtnStart_Click" Tag="Easy" Style="{StaticResource TerminalButtonStyle}" Width="200"/>
+                <Button Content="ADVANCED" Click="BtnStart_Click" Tag="Advanced" Style="{StaticResource TerminalButtonStyle}" Width="200"/>
+                <Button Content="HARDCORE" Click="BtnStart_Click" Tag="Hardcore" Style="{StaticResource TerminalButtonStyle}" Width="200"/>
             </StackPanel>
-        </DockPanel>
+        </Grid>
 
-        <Border Grid.Row="1" BorderBrush="#004400" BorderThickness="2" Padding="10">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="10" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="30" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="10" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+        <Grid x:Name="GameScreen" Visibility="Collapsed">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
-                    <TextBlock x:Name="TxtHexLeft" Grid.Column="0"
-                       Foreground="#008800" FontFamily="Consolas" FontSize="20"
-                       LineHeight="24" TextAlignment="Right" IsHitTestVisible="False"/>
+            <DockPanel Grid.Row="0" Margin="20,5,20,20" LastChildFill="False">
+                <TextBlock Text="ROBCO INDUSTRIES (TM) TERMLINK" Foreground="#00FF00" FontSize="18" FontFamily="Consolas" FontWeight="Bold" DockPanel.Dock="Left"/>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                    <TextBlock Text="ATTEMPTS LEFT: " Foreground="#00FF00" FontFamily="Consolas" FontSize="18"/>
+                    <TextBlock x:Name="TxtAttempts" Foreground="#00FF00" FontFamily="Consolas" FontSize="18" FontWeight="Bold"/>
+                </StackPanel>
+            </DockPanel>
 
-                    <TextBox x:Name="TxtBoardLeft" Grid.Column="2"
-                            Foreground="#00FF00" Background="Transparent" BorderThickness="0"
-                            FontFamily="Consolas" FontSize="20" TextBlock.LineHeight="24"
-                            TextWrapping="NoWrap" IsReadOnly="True" Cursor="Hand"
-                            Focusable="True" 
-                            SelectionOpacity="1.0" 
-                            SelectionBrush="#00FF00"
-                            SelectionTextBrush="Black"
-                            IsReadOnlyCaretVisible="False"
-                            PreviewMouseLeftButtonDown="TxtBoard_Click"
-                            MouseMove="TxtBoard_MouseMove"
-                            MouseLeave="TxtBoard_MouseLeave"/>
+            <Border Grid.Row="1" BorderBrush="#004400" BorderThickness="2" Padding="10">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="30" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
 
-                    <TextBlock x:Name="TxtHexRight" Grid.Column="4"
-                       Foreground="#008800" FontFamily="Consolas" FontSize="20"
-                       LineHeight="24" TextAlignment="Right" IsHitTestVisible="False"/>
+                        <TextBlock x:Name="TxtHexLeft" Grid.Column="0"
+               Foreground="#008800" FontFamily="Consolas" FontSize="20"
+               LineHeight="24" TextAlignment="Right" IsHitTestVisible="False"/>
 
-                    <TextBox x:Name="TxtBoardRight" Grid.Column="6"                             
-                            Foreground="#00FF00" Background="Transparent" BorderThickness="0"
-                            FontFamily="Consolas" FontSize="20" TextBlock.LineHeight="24"
-                            TextWrapping="NoWrap" IsReadOnly="True" Cursor="Hand"
-                            Focusable="True" 
-                            SelectionOpacity="1.0" 
-                            SelectionBrush="#00FF00"
-                            SelectionTextBrush="Black"
-                            IsReadOnlyCaretVisible="False"
-                            PreviewMouseLeftButtonDown="TxtBoard_Click"
-                            MouseMove="TxtBoard_MouseMove"
-                            MouseLeave="TxtBoard_MouseLeave"/>   
-                </Grid>
+                        <TextBox x:Name="TxtBoardLeft" Grid.Column="2"
+             Foreground="#00FF00" Background="Transparent" BorderThickness="0"
+             FontFamily="Consolas" FontSize="20" TextBlock.LineHeight="24"
+             TextWrapping="NoWrap" IsReadOnly="True" Cursor="Hand"
+             Focusable="True" SelectionOpacity="1.0" 
+             SelectionBrush="#00FF00" SelectionTextBrush="Black"
+             IsReadOnlyCaretVisible="False"
+             PreviewMouseLeftButtonDown="TxtBoard_Click"
+             MouseMove="TxtBoard_MouseMove"
+             MouseLeave="TxtBoard_MouseLeave"/>
+
+                        <TextBlock x:Name="TxtHexRight" Grid.Column="4"
+               Foreground="#008800" FontFamily="Consolas" FontSize="20"
+               LineHeight="24" TextAlignment="Right" IsHitTestVisible="False"/>
+
+                        <TextBox x:Name="TxtBoardRight" Grid.Column="6"                             
+             Foreground="#00FF00" Background="Transparent" BorderThickness="0"
+             FontFamily="Consolas" FontSize="20" TextBlock.LineHeight="24"
+             TextWrapping="NoWrap" IsReadOnly="True" Cursor="Hand"
+             Focusable="True" SelectionOpacity="1.0" 
+             SelectionBrush="#00FF00" SelectionTextBrush="Black"
+             IsReadOnlyCaretVisible="False"
+             PreviewMouseLeftButtonDown="TxtBoard_Click"
+             MouseMove="TxtBoard_MouseMove"
+             MouseLeave="TxtBoard_MouseLeave"/>
+                    </Grid>
+                </ScrollViewer>
+            </Border>
+
+            <ScrollViewer x:Name="StatusScrollViewer" Grid.Row="2" MaxHeight="150" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
+                <TextBlock x:Name="TxtStatus" Foreground="#00FF00" FontFamily="Consolas" FontSize="16" TextWrapping="Wrap"/>
             </ScrollViewer>
-        </Border>
+        </Grid>
 
-        <ScrollViewer x:Name="StatusScrollViewer"
-              Grid.Row="2" 
-              MaxHeight="150" 
-              VerticalScrollBarVisibility="Auto"
-              Margin="0,10,0,0">
-
-            <TextBlock x:Name="TxtStatus" 
-               Foreground="#00FF00" 
-               FontFamily="Consolas" 
-               FontSize="16" 
-               TextWrapping="Wrap"/>
-
-        </ScrollViewer>
+        <Grid x:Name="GameOverOverlay" Visibility="Collapsed" Panel.ZIndex="20" Background="#CC000000">
+            <Border BorderBrush="#00FF00" BorderThickness="2" Background="Black" VerticalAlignment="Center" HorizontalAlignment="Center" Padding="40">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock x:Name="TxtGameOverTitle" Text="TERMINAL LOCKED" Foreground="Red" FontFamily="Consolas" FontSize="32" Margin="0,0,0,30" HorizontalAlignment="Center"/>
+                    <Button Content="RETRY" Click="BtnRetry_Click" Style="{StaticResource TerminalButtonStyle}" Width="200"/>
+                    <Button Content="RETURN TO MENU" Click="BtnToMenu_Click" Style="{StaticResource TerminalButtonStyle}" Width="200"/>
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

@@ -19,7 +19,7 @@ namespace HackingGameUI
         // 1. Initialize the BLL
         private HackingTerminal _terminal = new HackingTerminal();
         private int _lastMousedIndex = -1;
-
+        private DifficultyLevel _currentDifficulty;
         public MainWindow()
         {
             InitializeComponent();
@@ -50,26 +50,23 @@ namespace HackingGameUI
                 // Use Dispatcher because BLL might be on a different thread
                 Dispatcher.Invoke(() =>
                 {
+                    // 1. Get settings NOW because the board is ready
                     var settings = _terminal.GetTerminalSettings();
                     int rowsPerCol = settings.Rows / 2;
+
+                    // 2. Prepare the Visuals (Moved from InitializeGame)
+                    TxtHexLeft.Text = GenerateHexHeaders(0xF900, rowsPerCol);
+                    TxtHexRight.Text = GenerateHexHeaders(0xFA00, rowsPerCol);
+
+                    // 3. Update the board textboxes
                     SplitAndAssignBoard(newBoard, settings.Columns, rowsPerCol);
                 });
             };
 
-            // 1. Start Game
-            _terminal.StartGame(DifficultyLevel.Easy);
-            var settings = _terminal.GetTerminalSettings();
-
-            // 2. Prepare the Visuals
-            // We assume the board is split into 2 visual columns
-            int rowsPerColumn = settings.Rows / 2;
-
-            // 3. Generate Hex Headers (Left start 0xF900, Right starts 0xFA00)
-            TxtHexLeft.Text = GenerateHexHeaders(0xF900, rowsPerColumn);
-            TxtHexRight.Text = GenerateHexHeaders(0xFA00, rowsPerColumn);
-
-            // 4. Split the single Board string into Left/Right TextBoxes
-            SplitAndAssignBoard(_terminal.BoardState, settings.Columns, rowsPerColumn);
+            _terminal.OnGameEnded += (status) =>
+            {
+                Dispatcher.Invoke(() => HandleGameEnd(status));
+            };
         }
 
         private void TxtBoard_Click(object sender, MouseButtonEventArgs e)
@@ -115,6 +112,65 @@ namespace HackingGameUI
                 startAddress += 16;
             }
             return sb.ToString();
+        }
+
+        private void BtnStart_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && Enum.TryParse(btn.Tag?.ToString(), out DifficultyLevel level))
+            {
+                // UI Logic: Show the game screen
+                MenuScreen.Visibility = Visibility.Collapsed;
+                GameScreen.Visibility = Visibility.Visible;
+
+                _currentDifficulty = level;
+                // BLL Logic: Start the engine (this triggers OnBoardUpdate above)
+                StartNewSession(level);
+            }
+        }
+
+        private void BtnToMenu_Click(object sender, RoutedEventArgs e)
+        {
+            // Presentation Logic: Toggle visibility of the Grids defined in XAML
+            MenuScreen.Visibility = Visibility.Visible;
+            GameScreen.Visibility = Visibility.Collapsed;
+            GameOverOverlay.Visibility = Visibility.Collapsed;
+        }
+
+        // 2. Logic for the "RETRY" button
+        private void BtnRetry_Click(object sender, RoutedEventArgs e)
+        {
+            // Implementation: Use your existing logic to restart the game
+            // You should use the same difficulty level stored from the last BtnStart_Click
+            StartNewSession(_currentDifficulty);
+        }
+        private void StartNewSession(DifficultyLevel level)
+        {
+            // UI Logic: Switch screens
+            MenuScreen.Visibility = Visibility.Collapsed;
+            GameOverOverlay.Visibility = Visibility.Collapsed;
+            GameScreen.Visibility = Visibility.Visible;
+
+            // --- FULL UI STATE RESET ---
+            // 1. Reset Text
+            TxtStatus.Text = "";
+
+            // 2. Reset Colors to default Terminal Green
+            TxtStatus.Foreground = Brushes.Lime;
+
+            // 3. Reset Opacity
+            TxtBoardLeft.Opacity = 1.0;
+            TxtBoardRight.Opacity = 1.0;
+
+            // 4. Re-enable interaction
+            TxtBoardLeft.IsReadOnly = false;
+            TxtBoardRight.IsReadOnly = false;
+
+            // 5. Reset internal mouse tracking
+            _lastMousedIndex = -1;
+            // ---------------------------
+
+            // BLL Logic: Initialize the game
+            _terminal.StartGame(level);
         }
 
         private void ProcessSelection(int index)
@@ -180,6 +236,25 @@ namespace HackingGameUI
             }
         }
 
+        private void HandleGameEnd(GameStatus status)
+        {
+            // 1. Show the Overlay (The missing piece!)
+            GameOverOverlay.Visibility = Visibility.Visible;
+            TxtGameOverTitle.Text = status == GameStatus.Won ? "LOGIN GRANTED" : "TERMINAL LOCKED";
+            TxtGameOverTitle.Foreground = status == GameStatus.Won ? Brushes.Lime : Brushes.Red;
+
+            // 2. Lock the board visuals
+            TxtBoardLeft.IsReadOnly = true;
+            TxtBoardRight.IsReadOnly = true;
+            TxtBoardLeft.Opacity = 0.5;
+            TxtBoardRight.Opacity = 0.5;
+
+            // 3. Clear highlights
+            ApplyUnifiedHighlight(null);
+
+            // 4. Update status log colors
+            TxtStatus.Foreground = status == GameStatus.Won ? Brushes.Lime : Brushes.Red;
+        }
 
         private void TxtBoard_MouseLeave(object sender, MouseEventArgs e)
         {

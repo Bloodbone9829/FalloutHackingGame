@@ -58,6 +58,7 @@ namespace HackingGameLib
             SendMessage("Welcome to ROBCO Industries (TM) Termlink");
             SendMessage("Password Required");
             OnAttemptsUpdate?.Invoke(RemainingAttempts);
+            OnBoardUpdate?.Invoke(BoardState);
         }
 
         // Checks if the specified range on the board is free of letters (i.e. safe for placing a new word)
